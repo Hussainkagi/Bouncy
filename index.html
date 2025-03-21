@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bounce Ball Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 480px;
+            height: 640px;
+            background-color: #000;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        #ball {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #fff;
+            border-radius: 50%;
+            left: 230px;
+            top: 320px;
+        }
+        
+        #paddle {
+            position: absolute;
+            width: 100px;
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 10px;
+            bottom: 20px;
+            left: 190px;
+        }
+        
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+        }
+        
+        #lives {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+        }
+        
+        #start-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        #start-button, #restart-button {
+            padding: 12px 24px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        #start-button:hover, #restart-button:hover {
+            background-color: #2980b9;
+        }
+        
+        #game-over {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        .title {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ball"></div>
+        <div id="paddle"></div>
+        <div id="score">Score: 0</div>
+        <div id="lives">Lives: 3</div>
+        
+        <div id="start-screen">
+            <div class="title">Bounce Ball</div>
+            <div class="subtitle">Move your mouse or swipe to control the paddle</div>
+            <button id="start-button">Start Game</button>
+        </div>
+        
+        <div id="game-over">
+            <div class="title">Game Over</div>
+            <div class="subtitle" id="final-score">Your score: 0</div>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let ballX = 240;
+        let ballY = 320;
+        let ballSpeedX = 5;
+        let ballSpeedY = -5;
+        let paddleX = 190;
+        const paddleWidth = 100;
+        const paddleHeight = 20;
+        const ballSize = 20;
+        let score = 0;
+        let lives = 3;
+        let isPlaying = false;
+        
+        // DOM elements
+        const ball = document.getElementById('ball');
+        const paddle = document.getElementById('paddle');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const gameContainer = document.getElementById('game-container');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const finalScore = document.getElementById('final-score');
+        
+        // Game container dimensions
+        const gameWidth = gameContainer.clientWidth;
+        const gameHeight = gameContainer.clientHeight;
+        
+        // Initialize ball position
+        function resetBall() {
+            ballX = gameWidth / 2;
+            ballY = gameHeight / 2;
+            ballSpeedY = -5;
+            ballSpeedX = Math.random() > 0.5 ? 5 : -5;
+        }
+        
+        // Move paddle with mouse
+        function handleMouseMove(e) {
+            const gameRect = gameContainer.getBoundingClientRect();
+            const relativeX = e.clientX - gameRect.left;
+            if (relativeX > 0 && relativeX < gameWidth) {
+                paddleX = relativeX - paddleWidth / 2;
+                if (paddleX < 0) paddleX = 0;
+                if (paddleX > gameWidth - paddleWidth) paddleX = gameWidth - paddleWidth;
+            }
+        }
+        
+        // Move paddle with touch
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const gameRect = gameContainer.getBoundingClientRect();
+            const relativeX = e.touches[0].clientX - gameRect.left;
+            if (relativeX > 0 && relativeX < gameWidth) {
+                paddleX = relativeX - paddleWidth / 2;
+                if (paddleX < 0) paddleX = 0;
+                if (paddleX > gameWidth - paddleWidth) paddleX = gameWidth - paddleWidth;
+            }
+        }
+        
+        // Update game state
+        function update() {
+            if (!isPlaying) return;
+            
+            // Move ball
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+            
+            // Ball collision with walls
+            if (ballX <= 0 || ballX >= gameWidth - ballSize) {
+                ballSpeedX = -ballSpeedX;
+            }
+            
+            // Ball collision with ceiling
+            if (ballY <= 0) {
+                ballSpeedY = -ballSpeedY;
+            }
+            
+            // Ball collision with paddle
+            if (
+                ballY >= gameHeight - paddleHeight - ballSize &&
+                ballX + ballSize >= paddleX &&
+                ballX <= paddleX + paddleWidth
+            ) {
+                ballSpeedY = -ballSpeedY;
+                
+                // Change angle based on where ball hits paddle
+                const hitPosition = (ballX + ballSize / 2) - (paddleX + paddleWidth / 2);
+                ballSpeedX = hitPosition * 0.2;
+                
+                // Increase score
+                score += 10;
+                scoreDisplay.textContent = `Score: ${score}`;
+                
+                // Increase speed slightly
+                if (Math.abs(ballSpeedY) < 15) {
+                    ballSpeedY *= 1.05;
+                }
+            }
+            
+            // Ball falls below paddle
+            if (ballY >= gameHeight) {
+                lives--;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                
+                if (lives <= 0) {
+                    gameOver();
+                } else {
+                    resetBall();
+                }
+            }
+            
+            // Update ball position
+            ball.style.left = `${ballX}px`;
+            ball.style.top = `${ballY}px`;
+            
+            // Update paddle position
+            paddle.style.left = `${paddleX}px`;
+            
+            requestAnimationFrame(update);
+        }
+        
+        // Game over
+        function gameOver() {
+            isPlaying = false;
+            finalScore.textContent = `Your score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Start game
+        function startGame() {
+            isPlaying = true;
+            score = 0;
+            lives = 3;
+            scoreDisplay.textContent = `Score: ${score}`;
+            livesDisplay.textContent = `Lives: ${lives}`;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            resetBall();
+            requestAnimationFrame(update);
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        document.addEventListener('mousemove', handleMouseMove);
+        gameContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
+        
+        // Initial setup
+        resetBall();
+    </script>
+</body>
+</html>
